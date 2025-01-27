@@ -72,6 +72,11 @@ variable "user_data_runcmd" {
   default     = []
 }
 
+variable "network_interface_id" {
+  description = "ID of the network interface to attach to the NAT instance"
+  type        = string
+}
+
 locals {
   // Merge the default tags and user-specified tags.
   // User-specified tags take precedence over the default.

@@ -1,43 +1,3 @@
-resource "aws_security_group" "this" {
-  name_prefix = var.name
-  vpc_id      = var.vpc_id
-  description = "Security group for NAT instance ${var.name}"
-  tags        = local.common_tags
-}
-
-resource "aws_security_group_rule" "egress" {
-  security_group_id = aws_security_group.this.id
-  type              = "egress"
-  cidr_blocks       = ["0.0.0.0/0"]
-  from_port         = 0
-  to_port           = 65535
-  protocol          = "all"
-}
-
-resource "aws_security_group_rule" "ingress_any" {
-  security_group_id = aws_security_group.this.id
-  type              = "ingress"
-  cidr_blocks       = var.private_subnets_cidr_blocks
-  from_port         = 0
-  to_port           = 65535
-  protocol          = "all"
-}
-
-resource "aws_network_interface" "this" {
-  security_groups   = [aws_security_group.this.id]
-  subnet_id         = var.public_subnet
-  source_dest_check = false
-  description       = "ENI for NAT instance ${var.name}"
-  tags              = local.common_tags
-}
-
-resource "aws_route" "this" {
-  count                  = length(var.private_route_table_ids)
-  route_table_id         = var.private_route_table_ids[count.index]
-  destination_cidr_block = "0.0.0.0/0"
-  network_interface_id   = aws_network_interface.this.id
-}
-
 # AMI of the latest Amazon Linux 2 
 data "aws_ami" "this" {
   most_recent = true
@@ -70,9 +30,8 @@ resource "aws_launch_template" "this" {
   }
 
   network_interfaces {
-    associate_public_ip_address = true
-    security_groups             = [aws_security_group.this.id]
-    delete_on_termination       = true
+    device_index         = 0
+    network_interface_id = var.network_interface_id
   }
 
   tag_specifications {
@@ -86,7 +45,7 @@ resource "aws_launch_template" "this" {
       write_files : concat([
         {
           path : "/opt/nat/runonce.sh",
-          content : templatefile("${path.module}/runonce.sh", { eni_id = aws_network_interface.this.id }),
+          content : templatefile("${path.module}/runonce.sh", { eni_id = var.network_interface_id }),
           permissions : "0755",
         },
         {
