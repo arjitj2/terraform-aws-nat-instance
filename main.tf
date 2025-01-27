@@ -69,12 +69,6 @@ resource "aws_launch_template" "this" {
     arn = aws_iam_instance_profile.this.arn
   }
 
-  network_interfaces {
-    associate_public_ip_address = false
-    security_groups             = [aws_security_group.this.id]
-    delete_on_termination       = true
-  }
-
   tag_specifications {
     resource_type = "instance"
     tags          = local.common_tags
@@ -83,7 +77,6 @@ resource "aws_launch_template" "this" {
   user_data = base64encode(join("\n", [
     "#cloud-config",
     yamlencode({
-      # https://cloudinit.readthedocs.io/en/latest/topics/modules.html
       write_files : concat([
         {
           path : "/opt/nat/runonce.sh",
@@ -108,6 +101,12 @@ resource "aws_launch_template" "this" {
 
   description = "Launch template for NAT instance ${var.name}"
   tags        = local.common_tags
+
+  network_interfaces {
+    associate_public_ip_address = false
+    delete_on_termination       = true
+    device_index                = 0
+  }
 }
 
 resource "aws_autoscaling_group" "this" {
