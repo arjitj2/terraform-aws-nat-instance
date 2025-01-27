@@ -101,12 +101,6 @@ resource "aws_launch_template" "this" {
 
   description = "Launch template for NAT instance ${var.name}"
   tags        = local.common_tags
-
-  network_interfaces {
-    associate_public_ip_address = false
-    delete_on_termination       = true
-    device_index                = 0
-  }
 }
 
 resource "aws_autoscaling_group" "this" {
