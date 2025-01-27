@@ -12,14 +12,13 @@ aws ec2 modify-instance-attribute --no-source-dest-check \
   --instance-id "$INSTANCE_ID"
 
 # Attach our pre-created ENI as eth1
+end_time=$((SECONDS + 180))
+while [ $SECONDS -lt $end_time ] && ! ip link show dev eth1; do
 aws ec2 attach-network-interface \
   --region "$REGION" \
   --instance-id "$INSTANCE_ID" \
   --device-index 1 \
   --network-interface-id "${eni_id}"
-
-# Wait for network interface to be ready
-while ! ip link show dev eth1; do
   sleep 1
 done
 
