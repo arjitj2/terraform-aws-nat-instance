@@ -8,34 +8,34 @@ INSTANCE_ID="$(/opt/aws/bin/ec2-metadata -i | cut -d' ' -f2)"
 
 echo "Debug: Starting runonce.sh"
 echo "Debug: ENI ID to attach: ${eni_id}"
-echo "Debug: Instance ID: ${INSTANCE_ID}"
+echo "Debug: Instance ID: $${INSTANCE_ID}"
 
 # List all ENIs in the account
 echo "Debug: All ENIs:"
-aws ec2 describe-network-interfaces --region "$REGION" --query 'NetworkInterfaces[*].[NetworkInterfaceId,Description,Status]' --output table
+aws ec2 describe-network-interfaces --region "$${REGION}" --query 'NetworkInterfaces[*].[NetworkInterfaceId,Description,Status]' --output table
 
 # List ENIs attached to this instance
 echo "Debug: ENIs attached to this instance:"
-aws ec2 describe-network-interfaces --region "$REGION" --filters "Name=attachment.instance-id,Values=${INSTANCE_ID}" --query 'NetworkInterfaces[*].[NetworkInterfaceId,Attachment.DeviceIndex]' --output table
+aws ec2 describe-network-interfaces --region "$${REGION}" --filters "Name=attachment.instance-id,Values=$${INSTANCE_ID}" --query 'NetworkInterfaces[*].[NetworkInterfaceId,Attachment.DeviceIndex]' --output table
 
 # Disable source/dest check
 aws ec2 modify-instance-attribute --no-source-dest-check \
-  --region "$REGION" \
-  --instance-id "$INSTANCE_ID"
+  --region "$${REGION}" \
+  --instance-id "$${INSTANCE_ID}"
 
 # First detach the ENI if it's attached elsewhere
 echo "Debug: Attempting to detach ENI ${eni_id} if attached elsewhere"
 ATTACHMENT_ID=$(aws ec2 describe-network-interfaces \
-  --region "$REGION" \
+  --region "$${REGION}" \
   --network-interface-ids "${eni_id}" \
   --query 'NetworkInterfaces[0].Attachment.AttachmentId' \
   --output text)
 
-if [ "${ATTACHMENT_ID}" != "None" ]; then
-  echo "Debug: Detaching ENI ${eni_id} with attachment ${ATTACHMENT_ID}"
+if [ "$${ATTACHMENT_ID}" != "None" ]; then
+  echo "Debug: Detaching ENI ${eni_id} with attachment $${ATTACHMENT_ID}"
   aws ec2 detach-network-interface \
-    --region "$REGION" \
-    --attachment-id "${ATTACHMENT_ID}" || true
+    --region "$${REGION}" \
+    --attachment-id "$${ATTACHMENT_ID}" || true
   
   echo "Debug: Waiting for detachment"
   sleep 10
