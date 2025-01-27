@@ -18,10 +18,6 @@ sysctl -q -w net.ipv4.ip_forward=1
 sysctl -q -w net.ipv4.conf.eth1.send_redirects=0
 iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
 
-# Make IP forwarding persistent
-echo "net.ipv4.ip_forward=1" | tee /etc/sysctl.d/99-nat.conf
-sysctl -p /etc/sysctl.d/99-nat.conf
-
 # switch the default route to eth1
 ip route del default dev eth0
 
