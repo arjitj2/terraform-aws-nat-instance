@@ -37,7 +37,7 @@ if [ "${ATTACHMENT_ID}" != "None" ] && [ "${ATTACHMENT_ID}" != "null" ]; then
 fi
 
 # Attach our pre-created ENI as eth1
-end_time=$((SECONDS + 180))
+end_time=$((SECONDS + 60))
 while [ $SECONDS -lt $end_time ]; do
   echo "Attempting to attach ENI ${eni_id}"
   if aws ec2 attach-network-interface \
