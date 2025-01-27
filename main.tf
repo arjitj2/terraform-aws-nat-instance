@@ -73,7 +73,7 @@ resource "aws_autoscaling_group" "this" {
   desired_capacity   = var.enabled ? 1 : 0
   min_size           = var.enabled ? 1 : 0
   max_size           = 1
-  availability_zones = ["us-west-2a", "us-west-2b", "us-west-2c"]
+  availability_zones = ["us-west-2a"]
 
   mixed_instances_policy {
     instances_distribution {
