@@ -3,6 +3,9 @@
 # Enable logging
 exec 1> >(logger -s -t $(basename $0)) 2>&1
 
+# Update package manager and install ec2-utils (for Amazon Linux 2023 minimal)
+sudo yum install -y ec2-utils
+
 REGION="$(/opt/aws/bin/ec2-metadata -z | sed 's/placement: \(.*\).$/\1/')"
 INSTANCE_ID="$(/opt/aws/bin/ec2-metadata -i | cut -d' ' -f2)"
 
