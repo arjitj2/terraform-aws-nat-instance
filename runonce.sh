@@ -3,42 +3,34 @@
 # Enable logging
 exec 1> >(logger -s -t $(basename $0)) 2>&1
 
-# Update package manager and install ec2-utils (for Amazon Linux 2023 minimal)
-sudo yum install -y ec2-utils
-
-REGION="$(/opt/aws/bin/ec2-metadata -z | sed 's/placement: \(.*\).$/\1/')"
-INSTANCE_ID="$(/opt/aws/bin/ec2-metadata -i | cut -d' ' -f2)"
+# Get instance metadata directly from IMDS
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/.$//')
+INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/instance-id)
 
 echo "Debug: Starting runonce.sh"
 echo "Debug: ENI ID to attach: ${eni_id}"
-echo "Debug: Instance ID: $${INSTANCE_ID}"
-
-# List all ENIs in the account
-echo "Debug: All ENIs:"
-aws ec2 describe-network-interfaces --region "$${REGION}" --query 'NetworkInterfaces[*].[NetworkInterfaceId,Description,Status]' --output table
-
-# List ENIs attached to this instance
-echo "Debug: ENIs attached to this instance:"
-aws ec2 describe-network-interfaces --region "$${REGION}" --filters "Name=attachment.instance-id,Values=$${INSTANCE_ID}" --query 'NetworkInterfaces[*].[NetworkInterfaceId,Attachment.DeviceIndex]' --output table
+echo "Debug: Instance ID: ${INSTANCE_ID}"
+echo "Debug: Region: ${REGION}"
 
 # Disable source/dest check
-aws ec2 modify-instance-attribute --no-source-dest-check \
-  --region "$${REGION}" \
-  --instance-id "$${INSTANCE_ID}"
+sudo aws ec2 modify-instance-attribute --no-source-dest-check \
+  --region "$REGION" \
+  --instance-id "$INSTANCE_ID"
 
 # First detach the ENI if it's attached elsewhere
 echo "Debug: Attempting to detach ENI ${eni_id} if attached elsewhere"
 ATTACHMENT_ID=$(aws ec2 describe-network-interfaces \
-  --region "$${REGION}" \
+  --region "$REGION" \
   --network-interface-ids "${eni_id}" \
   --query 'NetworkInterfaces[0].Attachment.AttachmentId' \
   --output text)
 
-if [ "$${ATTACHMENT_ID}" != "None" ]; then
-  echo "Debug: Detaching ENI ${eni_id} with attachment $${ATTACHMENT_ID}"
+if [ "${ATTACHMENT_ID}" != "None" ] && [ "${ATTACHMENT_ID}" != "null" ]; then
+  echo "Debug: Detaching ENI ${eni_id} with attachment ${ATTACHMENT_ID}"
   aws ec2 detach-network-interface \
-    --region "$${REGION}" \
-    --attachment-id "$${ATTACHMENT_ID}" || true
+    --region "$REGION" \
+    --attachment-id "${ATTACHMENT_ID}" || true
   
   echo "Debug: Waiting for detachment"
   sleep 10
@@ -56,7 +48,7 @@ while [ $SECONDS -lt $end_time ]; do
     
     # Wait for interface to appear
     for i in {1..30}; do
-      if ip link show dev eth1; then
+      if sudo ip link show dev eth1; then
         echo "Successfully attached ENI"
         break 2
       fi
@@ -67,11 +59,11 @@ while [ $SECONDS -lt $end_time ]; do
   sleep 5
 done
 
-if ! ip link show dev eth1; then
+if ! sudo ip link show dev eth1; then
   echo "Failed to attach ENI after 3 minutes"
   exit 1
 fi
 
 # start SNAT
-systemctl enable snat
-systemctl start snat
+sudo systemctl enable snat
+sudo systemctl start snat
