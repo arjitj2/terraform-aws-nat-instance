@@ -23,11 +23,19 @@ resource "aws_security_group_rule" "ingress_any" {
   protocol          = "all"
 }
 
+resource "aws_network_interface" "this" {
+  security_groups   = [aws_security_group.this.id]
+  subnet_id         = var.public_subnet
+  source_dest_check = false
+  description       = "ENI for NAT instance ${var.name}"
+  tags              = local.common_tags
+}
+
 resource "aws_route" "this" {
   count                  = length(var.private_route_table_ids)
   route_table_id         = var.private_route_table_ids[count.index]
   destination_cidr_block = "0.0.0.0/0"
-  instance_id            = aws_autoscaling_group.this.id
+  network_interface_id   = aws_network_interface.this.id
 }
 
 # AMI of the latest Amazon Linux 2 
@@ -78,7 +86,7 @@ resource "aws_launch_template" "this" {
       write_files : concat([
         {
           path : "/opt/nat/runonce.sh",
-          content : file("${path.module}/runonce.sh"),
+          content : templatefile("${path.module}/runonce.sh", { eni_id = aws_network_interface.this.id }),
           permissions : "0755",
         },
         {
@@ -171,7 +179,7 @@ resource "aws_iam_role_policy_attachment" "ssm" {
   role       = aws_iam_role.this.name
 }
 
-resource "aws_iam_role_policy" "modify_instance" {
+resource "aws_iam_role_policy" "eni" {
   role        = aws_iam_role.this.name
   name_prefix = var.name
   policy      = <<EOF
@@ -181,6 +189,7 @@ resource "aws_iam_role_policy" "modify_instance" {
         {
             "Effect": "Allow",
             "Action": [
+                "ec2:AttachNetworkInterface",
                 "ec2:ModifyInstanceAttribute"
             ],
             "Resource": "*"
