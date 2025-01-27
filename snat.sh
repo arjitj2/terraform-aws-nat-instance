@@ -9,6 +9,13 @@ while ! ip link show dev eth1; do
   sleep 1
 done
 
+# Get the gateway IP from the existing route
+GATEWAY_IP=$(ip route show dev eth0 | grep default | awk '{print $3}')
+
+# Fix routing - ensure default route goes through eth1
+ip route del default 2>/dev/null || true
+ip route add default via "$GATEWAY_IP" dev eth1
+
 sysctl -q -w net.ipv4.conf.all.rp_filter=0
 sysctl -q -w net.ipv4.conf.eth1.rp_filter=0
 sysctl -q -w net.ipv4.conf.default.rp_filter=0
