@@ -1,8 +1,5 @@
 #!/bin/bash -x
 
-# Enable logging
-exec 1> >(logger -s -t $(basename $0)) 2>&1
-
 # wait for eth1
 while ! ip link show dev eth1; do
   sleep 1

@@ -69,6 +69,12 @@ resource "aws_launch_template" "this" {
     arn = aws_iam_instance_profile.this.arn
   }
 
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups             = [aws_security_group.this.id]
+    delete_on_termination       = true
+  }
+
   tag_specifications {
     resource_type = "instance"
     tags          = local.common_tags
